@@ -11,112 +11,108 @@ const accounts: Account[] = [
 
 const transactions: Transaction[] = [
   { from: "C", to: "B", amount: 300 }, //
-  { from: "A", to: "D", amount: 200 }, // 900
-  { from: "C", to: "A", amount: 400 }, //
-  { from: "D", to: "B", amount: 150 }, // 750
-  { from: "A", to: "C", amount: 250 }, //
-  { from: "C", to: "D", amount: 100 }, // 850
-  { from: "B", to: "A", amount: 50 },
-  { from: "A", to: "B", amount: 150 },
-  { from: "D", to: "C", amount: 100 }, // 750
-  { from: "B", to: "D", amount: 250 }, // 1000
+  { from: "A", to: "D", amount: 200 }, // 1000
+  { from: "C", to: "A", amount: 400 }, // 1400
+  { from: "D", to: "B", amount: 150 }, //
+  { from: "A", to: "C", amount: 250 }, // 1350
+  { from: "C", to: "D", amount: 100 }, //
+  { from: "B", to: "A", amount: 50 }, // 1400
+  { from: "A", to: "B", amount: 150 }, // 1050
+  { from: "D", to: "C", amount: 100 }, //
+  { from: "B", to: "D", amount: 250 }, //
 ];
 
-function getTotals(acc: Account[], tra: Transaction[]): Account[] {
-  const results = acc.map((acc) => ({ ...acc })); // Deep copy
-  for (const transaction of tra) {
-    const from = results.find((x) => x.id === transaction.from) as Account;
-    const to = results.find((x) => x.id === transaction.to) as Account;
+function deepCopy<T>(input: T[]): T[] {
+  return input.map((acc) => ({ ...acc }));
+}
+
+function calculateTotals(
+  accounts: Account[],
+  transactions: Transaction[]
+): Account[] {
+  const results = deepCopy(accounts);
+  for (const transaction of transactions) {
+    const from = results.find((a) => a.id === transaction.from) as Account;
+    const to = results.find((a) => a.id === transaction.to) as Account;
+    if (!from || !to) throw Error("Could not find account");
     from.balance = from.balance - transaction.amount;
     to.balance = to.balance + transaction.amount;
   }
   return results;
 }
 
-function rebalance(input: Account[]): Transaction[] {
-  // get the target amount
-  // for each account
-  // if the account is already balanced then skip
+function calculateTargetBalance(accounts: Account[]): number {
+  return accounts.reduce((cur, ele) => cur + ele.balance, 0) / accounts.length;
+}
 
-  // find the accounts over
-  // find the accounts under
-
-  const workingAccounts = input.map((acc) => ({ ...acc })); // Deep copy
+function calculateBalancingTransactions(input: Account[]): Transaction[] {
+  const workingAccounts = deepCopy(input);
   const results: Transaction[] = [];
-  const target =
-    workingAccounts.reduce((acc, curr) => acc + curr.balance, 0) / input.length;
 
-  console.debug({ target });
+  // find the target amount
+  const target = calculateTargetBalance(input);
 
-  let under = workingAccounts.filter((x) => x.balance < target);
+  // find the remainers
   let over = workingAccounts
     .filter((x) => x.balance > target)
-    .sort((a, b) => b.balance - a.balance); // sort by highest first
+    .sort((a, b) => b.balance - a.balance);
+  let under = workingAccounts
+    .filter((x) => x.balance < target)
+    .sort((a, b) => b.balance - a.balance);
 
-  while (under.length > 0 && over.length > 0) {
-    const u = under[0];
-    const o = over[0];
+  // move the accounts
+  while (under.length > 0) {
+    const needed = target - under[0].balance; // 100
+    const available = over[0].balance - target; // 200
 
-    const amountUnder = target - u.balance;
-    const amountOver = o.balance - target;
+    const transferAmount = Math.min(needed, available);
+    results.push({ from: over[0].id, to: under[0].id, amount: transferAmount });
+    over[0].balance = over[0].balance - transferAmount;
+    under[0].balance = under[0].balance + transferAmount;
 
-    const transferAmount = Math.min(amountUnder, amountOver);
-    results.push({
-      amount: transferAmount,
-      from: o.id,
-      to: u.id,
-    });
-
-    // apply
-    o.balance = o.balance - transferAmount;
-    u.balance = u.balance + transferAmount;
-
-    // filter
-    under = workingAccounts.filter((x) => x.balance < target);
+    // refresh the remainers
     over = workingAccounts
       .filter((x) => x.balance > target)
-      .sort((a, b) => b.balance - a.balance); // sort by highest first
+      .sort((a, b) => b.balance - a.balance);
+    under = workingAccounts.filter((x) => x.balance < target);
   }
 
   return results;
 }
 
-it("returns the correct value for A", () => {
-  const results = getTotals(accounts, transactions);
+it("calculates the correct totals", () => {
+  const result = calculateTotals(accounts, transactions);
 
-  expect(results).toEqual<Account[]>([
+  expect(result).toEqual([
     { balance: 1050, id: "A" }, // do nothing
-    { balance: 800, id: "B" }, // add 250
-    { balance: 1350, id: "C" }, // take 300
-    { balance: 1000, id: "D" }, // add 50
+    { balance: 800, id: "B" }, // needs 250
+    { balance: 1350, id: "C" }, // give 250, then 50
+    { balance: 1000, id: "D" }, // needs 50
   ]);
 });
 
-it("sorts correctly", () => {
-  const balancingTransactions = rebalance(getTotals(accounts, transactions));
+it("calculates balance", () => {
+  const result = calculateTargetBalance(
+    calculateTotals(accounts, transactions)
+  );
 
-  expect(balancingTransactions).toEqual([
-    {
-      amount: 250,
-      from: "C",
-      to: "B",
-    },
+  expect(result).toEqual(1050);
+});
+
+it("calculates the correct transactions", () => {
+  const startingAccounts = calculateTotals(accounts, transactions);
+  const results = calculateBalancingTransactions(startingAccounts);
+
+  expect(results).toEqual([
     {
       amount: 50,
       from: "C",
       to: "D",
     },
-  ]);
-
-  const results = getTotals(accounts, [
-    ...transactions,
-    ...balancingTransactions,
-  ]);
-
-  expect(results).toEqual([
-    { balance: 1050, id: "A" },
-    { balance: 1050, id: "B" },
-    { balance: 1050, id: "C" },
-    { balance: 1050, id: "D" },
+    {
+      amount: 250,
+      from: "C",
+      to: "B",
+    },
   ]);
 });
