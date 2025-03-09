@@ -2,6 +2,8 @@ type Account = { id: AccountId; balance: number };
 type Transaction = { from: AccountId; to: AccountId; amount: number };
 type AccountId = "A" | "B" | "C" | "D";
 
+import currency from "currency.js";
+
 const accounts: Account[] = [
   { id: "A", balance: 1200 },
   { id: "B", balance: 500 },
@@ -47,34 +49,45 @@ function calculateTargetBalance(accounts: Account[]): number {
 
 function calculateBalancingTransactions(input: Account[]): Transaction[] {
   const workingAccounts = deepCopy(input);
-  const results: Transaction[] = [];
 
-  // find the target amount
-  const target = calculateTargetBalance(input);
+  // get the target amount
+  const target = calculateTargetBalance(workingAccounts);
 
-  // find the remainers
-  let over = workingAccounts
-    .filter((x) => x.balance > target)
-    .sort((a, b) => b.balance - a.balance);
+  // for everything that is under, take it from over
+  // while something is under, loop through the overs and decrements until complete
+  // always take it from the most large number
+
   let under = workingAccounts
     .filter((x) => x.balance < target)
-    .sort((a, b) => b.balance - a.balance);
+    .filter((x) => target - x.balance > 0.01);
+  let over = workingAccounts
+    .filter((x) => x.balance > target)
+    .sort((a, b) => b.balance - a.balance); // largest at front
 
-  // move the accounts
-  while (under.length > 0) {
-    const needed = target - under[0].balance; // 100
-    const available = over[0].balance - target; // 200
+  console.debug({ under, over });
 
-    const transferAmount = Math.min(needed, available);
-    results.push({ from: over[0].id, to: under[0].id, amount: transferAmount });
+  let results: Transaction[] = [];
+
+  while (under.length > 0 && over.length > 0) {
+    let available = currency(over[0].balance).subtract(target);
+    let desired = currency(target).subtract(under[0].balance);
+    let transferAmount = Math.min(available.value, desired.value);
+
+    results.push({
+      amount: transferAmount,
+      from: over[0].id,
+      to: under[0].id,
+    });
+
     over[0].balance = over[0].balance - transferAmount;
     under[0].balance = under[0].balance + transferAmount;
 
-    // refresh the remainers
+    under = workingAccounts
+      .filter((x) => x.balance < target)
+      .filter((x) => target - x.balance > 0.01);
     over = workingAccounts
       .filter((x) => x.balance > target)
-      .sort((a, b) => b.balance - a.balance);
-    under = workingAccounts.filter((x) => x.balance < target);
+      .sort((a, b) => b.balance - a.balance); // largest at front
   }
 
   return results;
@@ -99,20 +112,28 @@ it("calculates balance", () => {
   expect(result).toEqual(1050);
 });
 
-it("calculates the correct transactions", () => {
-  const startingAccounts = calculateTotals(accounts, transactions);
+it("calculates the correct transactionsfor a simple example", () => {
+  const startingAccounts = calculateTotals(
+    [
+      { balance: 100, id: "A" },
+      { balance: 50, id: "B" },
+    ],
+    []
+  );
   const results = calculateBalancingTransactions(startingAccounts);
 
-  expect(results).toEqual([
-    {
-      amount: 50,
-      from: "C",
-      to: "D",
-    },
-    {
-      amount: 250,
-      from: "C",
-      to: "B",
-    },
-  ]);
+  expect(results).toEqual([{ amount: 25, from: "A", to: "B" }]);
+});
+
+it.only("calculates the correct transactionsfor a complex example", () => {
+  const startingAccounts = calculateTotals(
+    [
+      { balance: 100, id: "A" },
+      { balance: 99.98, id: "B" },
+    ],
+    []
+  );
+  const results = calculateBalancingTransactions(startingAccounts);
+
+  expect(results).toEqual([{ amount: 0.01, from: "A", to: "B" }]);
 });

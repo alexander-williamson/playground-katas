@@ -1,5 +1,5 @@
 {
-  "name": "wagestream-prep-01",
+  "name": "999-account-balancing",
   "version": "1.0.0",
   "main": "jest.config.js",
   "scripts": {
@@ -14,5 +14,11 @@
     "jest": "^29.7.0",
     "ts-jest": "^29.2.6",
     "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "@types/dinero.js": "^1.9.4",
+    "bignumber": "^1.1.0",
+    "bignumber.js": "^9.1.2",
+    "currency.js": "^2.0.4"
   }
 }
