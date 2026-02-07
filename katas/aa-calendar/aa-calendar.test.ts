@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { addDays, eachWeekOfInterval, endOfYear, getMonth, isBefore, isSameDay, isSaturday, nextSaturday, startOfMonth } from "date-fns";
+import { differenceInCalendarMonths, differenceInCalendarWeeks, eachWeekOfInterval, endOfYear, getMonth, isSameDay, isSaturday, nextSaturday, startOfMonth } from "date-fns";
 
 const SATURDAY = 6;
 
@@ -21,44 +21,29 @@ function meetingCalculator(dates: Date[]): MeetingCalendarItem[] {
     throw new Error("No dates provided");
   }
 
-  const earliestFirst = dates.sort((a, b) => a.getTime() - b.getTime());
-  const firstDate: Date = earliestFirst[0] as Date;
-  const lastDate: Date = earliestFirst[earliestFirst.length - 1] as Date;
+  return dates.map(mapToMeeting);
+}
+
+function mapToMeeting(date: Date): MeetingCalendarItem {
+  if (isFirstSaturdayOfMonth(date)) {
+    return {
+      date,
+      type: `tradition-${getMonth(date) + 1}`,
+    };
+  }
+
   const knownStep11 = new Date("2025-12-27");
+  const knownStep11ZeroOffset = 10;
 
-  if (isBefore(firstDate, knownStep11)) {
-    throw new Error(`Date must be greater than ${knownStep11}`);
-  }
+  const diffWeeksSinceKnown = differenceInCalendarWeeks(date, knownStep11);
+  const diffMonthsSinceKnown = differenceInCalendarMonths(date, knownStep11);
+  const newMod = knownStep11ZeroOffset + diffWeeksSinceKnown - diffMonthsSinceKnown;
+  const step = `step-${(newMod % 12) + 1}`;
 
-  if (!isSaturday(firstDate)) {
-    throw new Error("Expected date to be a Saturday");
-  }
-
-  const results: MeetingCalendarItem[] = [];
-  let current = knownStep11;
-  let zeroBasedStepCounter = 10; // offset from zero
-
-  while (current < lastDate) {
-    const isTradition = isFirstSaturdayOfMonth(current);
-    if (isTradition) {
-      if (current >= firstDate) {
-        results.push({
-          date: current,
-          type: `tradition-` + (getMonth(current) + 1),
-        });
-      }
-    } else {
-      if (current >= firstDate) {
-        results.push({
-          date: current,
-          type: `step-${(zeroBasedStepCounter % 12) + 1}`,
-        });
-      }
-      zeroBasedStepCounter++;
-    }
-    current = addDays(current, 7);
-  }
-  return results;
+  return {
+    date,
+    type: step,
+  };
 }
 
 describe("saturdayCalculator", () => {
