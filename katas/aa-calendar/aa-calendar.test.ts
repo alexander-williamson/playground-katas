@@ -75,10 +75,9 @@ describe("isFirstSaturdayOfMonth", () => {
     expect(isFirstSaturdayOfMonth(new Date("2026-08-01"))).toEqual(true);
   });
 
-  const friday = new Date("2026-02-06");
-  const secondSaturday = new Date("2026-02-14");
-  it.each([friday, secondSaturday])("returns false if the day is not the first Saturday of the month", (input: Date) => {
-    expect(isFirstSaturdayOfMonth(input)).toEqual(false);
+  it("returns false if the day is not the first Saturday of the month", () => {
+    expect(isFirstSaturdayOfMonth(new Date("2026-02-06"))).toEqual(false);
+    expect(isFirstSaturdayOfMonth(new Date("2026-02-14"))).toEqual(false);
   });
 });
 
