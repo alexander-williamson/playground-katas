@@ -20,7 +20,7 @@ class DynamicArray<T = number> {
   }
 
   get(index: number): T {
-    if (index < 0 || index > this.capacity - 1) {
+    if (index < 0 || index >= this.itemCount) {
       throw new Error("Out of bounds");
     }
     return this.arr[index]!;
@@ -54,6 +54,19 @@ class DynamicArray<T = number> {
     this.itemCount--;
     return result!;
   }
+
+  popAt(index: number): T {
+    console.info({ index, itemCount: this.itemCount });
+    if (index < 0 || index >= this.itemCount) {
+      throw Error("Out of bounds");
+    }
+    const item = this.arr[index]!;
+    this.itemCount--;
+    for (let i = index; i < this.itemCount; i++) {
+      this.arr[i] = this.arr[i + 1]!;
+    }
+    return item;
+  }
 }
 
 describe("dynamic array", () => {
@@ -65,9 +78,9 @@ describe("dynamic array", () => {
       expect(sut.getCapacity()).toEqual(10);
     });
 
-    it("returns undefined for properties initially", () => {
-      expect(sut.get(0)).toBeUndefined();
-      expect(sut.get(9)).toBeUndefined();
+    it("throws out of bounds for non set ittems", () => {
+      expect(() => sut.get(0)).toThrowError(/Out of bounds/);
+      expect(() => sut.get(9)).toThrowError(/Out of bounds/);
     });
 
     it("throws error if trying to fetch outside of the bounds", () => {
@@ -143,7 +156,7 @@ describe("dynamic array", () => {
       expect(sut.getItemCount()).toEqual(1);
     });
 
-    it.only("resizes a 40 at 10 items", () => {
+    it("resizes a 40 at 10 items", () => {
       const sut = new DynamicArray();
 
       for (let i = 0; i < 40; i++) {
@@ -156,6 +169,32 @@ describe("dynamic array", () => {
 
       expect(sut.getItemCount()).toEqual(0);
       expect(sut.getCapacity()).toEqual(10);
+    });
+  });
+
+  describe("removing specific items", () => {
+    it("lets you remove a particular item", () => {
+      const sut = new DynamicArray();
+      for (let i = 0; i < 10; i++) {
+        sut.append(i * 1000);
+      }
+
+      expect(sut.popAt(3)).toEqual(3000);
+
+      expect(sut.getCapacity()).toEqual(10);
+      expect(sut.getItemCount()).toEqual(9);
+
+      expect(sut.get(0)).toEqual(0);
+      expect(sut.get(1)).toEqual(1000);
+      expect(sut.get(2)).toEqual(2000);
+      expect(sut.get(3)).toEqual(4000);
+      expect(sut.get(4)).toEqual(5000);
+      expect(sut.get(5)).toEqual(6000);
+      expect(sut.get(6)).toEqual(7000);
+      expect(sut.get(7)).toEqual(8000);
+      expect(sut.get(8)).toEqual(9000);
+      expect(() => sut.get(9)).toThrow("Out of bounds");
+      expect(() => sut.popAt(9)).toThrow("Out of bounds");
     });
   });
 });
