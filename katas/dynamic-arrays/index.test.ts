@@ -56,15 +56,14 @@ class DynamicArray<T = number> {
   }
 
   popAt(index: number): T {
-    console.info({ index, itemCount: this.itemCount });
     if (index < 0 || index >= this.itemCount) {
       throw Error("Out of bounds");
     }
     const item = this.arr[index]!;
-    this.itemCount--;
     for (let i = index; i < this.itemCount; i++) {
       this.arr[i] = this.arr[i + 1]!;
     }
+    this.pop();
     return item;
   }
 }
@@ -163,12 +162,12 @@ describe("dynamic array", () => {
         sut.append(i * 1000);
       }
 
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < 30; i++) {
         sut.pop();
       }
 
-      expect(sut.getItemCount()).toEqual(0);
-      expect(sut.getCapacity()).toEqual(10);
+      expect(sut.getItemCount()).toEqual(10);
+      expect(sut.getCapacity()).toEqual(40);
     });
   });
 
@@ -195,6 +194,28 @@ describe("dynamic array", () => {
       expect(sut.get(8)).toEqual(9000);
       expect(() => sut.get(9)).toThrow("Out of bounds");
       expect(() => sut.popAt(9)).toThrow("Out of bounds");
+    });
+
+    it("resizes the array at 25$ when removing at index", () => {
+      const sut = new DynamicArray();
+      for (let i = 0; i < 40; i++) {
+        sut.append(i * 1000);
+      }
+
+      expect(sut.getItemCount()).toEqual(40);
+      expect(sut.getCapacity()).toEqual(40);
+
+      for (let i = 0; i < 30; i++) {
+        sut.popAt(5);
+      }
+
+      expect(sut.getItemCount()).toEqual(10);
+      expect(sut.getCapacity()).toEqual(40);
+
+      sut.popAt(5);
+
+      expect(sut.getItemCount()).toEqual(9);
+      expect(sut.getCapacity()).toEqual(10);
     });
   });
 });
